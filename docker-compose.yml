@@ -1,0 +1,17 @@
+# Docker compose for FitBounty stack
+services:
+  fitbounty-bot:
+    build: ./bot
+    environment:
+      - NOSTR_PRIVATE_KEY=${BOT_PRIVATE_KEY}
+      - LND_HOST=${UMBREL_LND_HOST}
+      - GEMINI_API_KEY=${GEMINI_KEY}
+    volumes:
+      - ./data:/app/data
+
+  postgres:
+    image: postgres:15
+    volumes:
+      - ./db:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=fitbounty
