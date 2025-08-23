@@ -16,7 +16,8 @@ class NostrClient {
     this.relays = relays.map(url => ({ url, relay: null, connected: false }));
     this.eventHandlers = new Map();
     this.isConnected = false;
-    
+    this.seenEvents = new Set();
+
     console.log(`🤖 FitBounty Bot initialized`);
     console.log(`📍 Public Key: ${nip19.npubEncode(this.publicKey)}`);
   }
@@ -79,42 +80,97 @@ class NostrClient {
   async reconnectRelay(relayInfo) {
     console.log(`🔄 Attempting to reconnect to ${relayInfo.url}`);
     try {
+      // Create a new relay instance if it doesn't exist
+      if (!relayInfo.relay) {
+        relayInfo.relay = relayInit(relayInfo.url);
+        
+        // Re-setup event handlers
+        relayInfo.relay.on('connect', () => {
+          console.log(`✅ Reconnected to ${relayInfo.url}`);
+          relayInfo.connected = true;
+          this.checkConnectionStatus();
+          this.subscribeToMentions(relayInfo.relay);
+        });
+
+        relayInfo.relay.on('error', () => {
+          console.log(`❌ Reconnection failed for ${relayInfo.url}`);
+          relayInfo.connected = false;
+        });
+
+        relayInfo.relay.on('disconnect', () => {
+          console.log(`🔌 Disconnected from ${relayInfo.url}`);
+          relayInfo.connected = false;
+          setTimeout(() => this.reconnectRelay(relayInfo), 5000);
+        });
+      }
+      
       await relayInfo.relay.connect();
     } catch (error) {
-      console.error(`💥 Reconnection failed for ${relayInfo.url}:`, error.message);
+      console.error(`💥 Reconnection failed for ${relayInfo.url}:`, error?.message || 'Unknown error');
+      // Try again in 10 seconds instead of 5
+      setTimeout(() => this.reconnectRelay(relayInfo), 10000);
     }
   }
 
   // Subscribe to mentions of our bot
   subscribeToMentions(relay) {
-    const filter = {
-      kinds: [1], // Text notes
-      '#p': [this.publicKey], // Mentions of our public key
-      since: Math.floor(Date.now() / 1000) - 3600 // Last hour to avoid spam on startup
+    // 1. Query for recent historical mentions
+    const historicalFilter = {
+      kinds: [1],
+      '#p': [this.publicKey],
+      since: Math.floor(Date.now() / 1000) - 3600, // Last hour
+      limit: 50
     };
 
-    console.log(`👂 Subscribing to mentions on ${relay.url}`);
-
-    const sub = relay.sub([filter]);
-
-    sub.on('event', (event) => {
+    console.log(`🔍 Querying historical mentions on ${relay.url}`);
+    const historicalSub = relay.sub([historicalFilter]);
+    
+    historicalSub.on('event', (event) => {
+      console.log(`📨 Historical event found:`, event.content);
       this.handleMentionEvent(event, relay.url);
     });
 
-    sub.on('eose', () => {
-      console.log(`📡 Subscription established on ${relay.url}`);
+    historicalSub.on('eose', () => {
+      console.log(`📚 Historical query complete on ${relay.url}`);
+      historicalSub.unsub(); // Close the historical subscription
+    });
+
+    // 2. Subscribe to new mentions going forward
+    const liveFilter = {
+      kinds: [1],
+      '#p': [this.publicKey],
+      since: Math.floor(Date.now() / 1000) // From now forward
+    };
+
+    console.log(`👂 Subscribing to live mentions on ${relay.url}`);
+    const liveSub = relay.sub([liveFilter]);
+
+    liveSub.on('event', (event) => {
+      console.log(`📨 Live event received:`, event.content);
+      this.handleMentionEvent(event, relay.url);
+    });
+
+    liveSub.on('eose', () => {
+      console.log(`📡 Live subscription established on ${relay.url}`);
     });
   }
 
   // Handle incoming mention events
   async handleMentionEvent(event, relayUrl) {
     try {
+      // Add deduplication check first
+      if (this.seenEvents.has(event.id)) {
+        return; // Skip duplicate events silently
+      }
+
       // Verify event signature
       if (!this.verifyEvent(event)) {
         console.log(`⚠️  Invalid event signature from ${event.pubkey}`);
         return;
       }
 
+      this.seenEvents.add(event.id);
+      
       // Check if this is a mention of our bot
       const isMentioned = event.tags.some(tag => 
         tag[0] === 'p' && tag[1] === this.publicKey

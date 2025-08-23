@@ -1,5 +1,9 @@
 import 'dotenv/config';
 import NostrClient from './nostr-client.js';
+import SmartParser from './smart-parser.js';
+import CoreAPI from './core-api.js';
+import PenaltyBetModel from '../database/models/penalty-bet.js';
+import PaymentHandler from './payment-handler.js';
 
 // Configuration from environment
 const config = {
@@ -11,6 +15,9 @@ const config = {
       'wss://relay.primal.net',
       'wss://nostr.wine'
     ]
+  },
+  nwc: {
+    connectionString: process.env.NWC_CONNECTION_STRING
   },
   bot: {
     name: process.env.BOT_NAME || 'FitBounty',
@@ -24,9 +31,18 @@ if (!config.nostr.privateKey) {
   process.exit(1);
 }
 
+if (!config.nwc.connectionString) {
+  console.error('❌ NWC_CONNECTION_STRING is required! Set it in your .env file');
+  process.exit(1);
+}
+
 class FitBountyBot {
   constructor() {
     this.nostrClient = new NostrClient(config.nostr.privateKey, config.nostr.relays);
+    this.smartParser = new SmartParser();
+    this.penaltyBetModel = new PenaltyBetModel();
+    this.paymentHandler = new PaymentHandler(config.nwc.connectionString);
+    this.coreAPI = new CoreAPI(this.penaltyBetModel, this.paymentHandler, this.nostrClient);
     this.isRunning = false;
     
     // Bind event handlers
@@ -77,8 +93,34 @@ class FitBountyBot {
     console.log(`⏰ Time: ${new Date(event.created_at * 1000).toISOString()}`);
 
     try {
-      // For now, just acknowledge the mention
-      // TODO: Add challenge parsing and Lightning integration
+      // Parse the message using advanced pattern matching
+      const parsedCommand = this.smartParser.parseMessage(content, event.tags);
+      
+      if (parsedCommand) {
+        console.log(`🧠 Parsed command: ${parsedCommand.command}`);
+        console.log(`🎯 Confidence: ${Math.round(parsedCommand.confidence * 100)}%`);
+        
+        // Execute the parsed command
+        const response = await this.coreAPI.executeCommand(parsedCommand, { event, user, relay });
+        
+        if (response.shouldReply) {
+          await this.nostrClient.publishReply(event, response.message);
+          console.log(`✅ Replied to ${user.npub}`);
+        }
+        
+        return;
+      }
+      
+      // If parsing failed, provide helpful error feedback
+      const parsingErrors = this.smartParser.getParsingErrors(content);
+      if (parsingErrors.length > 0) {
+        const errorResponse = this.formatParsingErrorResponse(parsingErrors);
+        await this.nostrClient.publishReply(event, errorResponse);
+        console.log(`📝 Sent parsing error help to ${user.npub}`);
+        return;
+      }
+      
+      // Fall back to existing response logic if no patterns matched
       const response = await this.generateResponse(content, user);
       
       if (response) {
@@ -102,9 +144,7 @@ class FitBountyBot {
   }
 
   async generateResponse(content, user) {
-    // Simple response logic for now
-    // TODO: Replace with proper challenge parsing and business logic
-    
+    // Keep your existing fallback logic but add a note about the new parsing
     const lowerContent = content.toLowerCase();
     
     // Check for help request
@@ -112,20 +152,14 @@ class FitBountyBot {
       return this.getHelpMessage();
     }
     
-    // Check for challenge keywords
+    // Check for general fitness mentions
     if (lowerContent.includes('challenge') || lowerContent.includes('pushup') || 
         lowerContent.includes('squat') || lowerContent.includes('workout')) {
-      return this.getChallengeResponse(content, user);
-    }
-    
-    // Check for bounty keywords
-    if (lowerContent.includes('bounty') || lowerContent.includes('sats')) {
-      return this.getBountyResponse(content, user);
-    }
-    
-    // Check for penalty bet format
-    if (lowerContent.includes('i owe') || lowerContent.includes('or i owe')) {
-      return this.getPenaltyBetResponse(content, user);
+      return `🤖 I can help you create fitness challenges! Try a format like:
+
+  "I have to do 20 pushups for 7 days OR I owe @friend 1000 sats @fitbounty"
+
+  Or reply with "@fitbounty help" for more examples.`;
     }
     
     // Default response
@@ -198,6 +232,19 @@ Try saying:
 
 Let's get fit and earn some sats! 🚀`;
   }
+
+  formatParsingErrorResponse(errors) {
+  const baseMessage = "❌ **I couldn't understand your request.**\n\n";
+  const errorList = errors.map(error => `• ${error}`).join('\n');
+  
+  return baseMessage + 
+    `**Issues found:**\n${errorList}\n\n` +
+    `**Examples of valid formats:**\n` +
+    `• "I have to do 20 pushups for 7 days OR I owe @alice 1000 sats @fitbounty"\n` +
+    `• "If I don't do 30 squats daily for a week, @bob gets 500 sats @fitbounty"\n` +
+    `• "Challenge: 50 burpees daily for 5 days @fitbounty"\n\n` +
+    `Reply with "@fitbounty help" for more examples.`;
+}
 
   async postStartupMessage() {
     // Optional: Post a status message when bot starts
@@ -274,3 +321,5 @@ main().catch((error) => {
   console.error('💥 Failed to start application:', error);
   process.exit(1);
 });
+
+export default FitBountyBot;
