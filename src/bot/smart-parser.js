@@ -67,9 +67,9 @@ class SmartParser {
    */
   parsePenaltyBet(content, tags) {
     for (const pattern of this.patterns.penaltyBets) {
-      console.log('Testing pattern:', pattern.source);
+      // console.log('Testing pattern:', pattern.source);
       const match = content.match(pattern);
-      console.log('Match result:', match);
+      // console.log('Match result:', match);
       if (match) {
         const parsed = this.extractPenaltyBetData(match, pattern, tags);
         if (parsed && this.validatePenaltyBet(parsed)) {
@@ -96,16 +96,12 @@ class SmartParser {
     let exerciseCount, exerciseType, duration, durationUnit, penaltyRecipient, penaltyAmount, penaltyCurrency;
 
     // Handle different pattern structures based on the match groups
-    if (pattern.source.includes('daily\\s+for\\s+(?:a\\s+)?')) {
-      console.log('Using "daily for a week/month" extraction logic');
-      [, exerciseCount, exerciseType, durationUnit, penaltyRecipient, penaltyAmount, penaltyCurrency] = match;
-      duration = 1; // Will be converted by convertTodays()
-      console.log('Extracted:', { exerciseCount, exerciseType, durationUnit, penaltyRecipient, penaltyAmount });
-    }
-    if (match.length === 8 && pattern.source.includes('daily\\s+for\\s+(?:a\\s+)?')) {
+    if (match.length === 7 && pattern.source.includes('daily\\s+for\\s+(?:a\\s+)?')) {
       // "X exercise daily for a week/month or @friend receives N sats"
+      // console.log('Using "daily for a week/month" extraction logic');
       [, exerciseCount, exerciseType, durationUnit, penaltyRecipient, penaltyAmount, penaltyCurrency] = match;
-      duration = 1; // Will be converted by convertTodays()
+      duration = 1; // Will be converted by convertToDays()
+      // console.log('Extracted:', { exerciseCount, exerciseType, durationUnit, penaltyRecipient, penaltyAmount });
     } else if (match.length === 8 && pattern.source.includes('daily\\s+for\\s+')) {
       // "X exercise daily for N days/weeks or @friend receives N sats"  
       [, exerciseCount, exerciseType, duration, durationUnit, penaltyRecipient, penaltyAmount, penaltyCurrency] = match;
@@ -134,7 +130,7 @@ class SmartParser {
     const cleanExerciseType = this.normalizeExercise(exerciseType);
     const cleanRecipient = penaltyRecipient?.replace('@', '');
     const recipientPubkey = this.findRecipientPubkey(cleanRecipient, tags);
-    const durationInDays = this.convertTodays(parseInt(duration), durationUnit);
+    const durationInDays = this.convertToDays(parseInt(duration || 1), durationUnit); // Fixed: was convertTodays
 
     return {
       exercise: `${exerciseCount} ${cleanExerciseType}`,
@@ -176,7 +172,7 @@ class SmartParser {
     const [, exerciseCount, exerciseType, duration, durationUnit] = match;
     
     const cleanExerciseType = this.normalizeExercise(exerciseType);
-    const durationInDays = this.convertTodays(parseInt(duration), durationUnit);
+    const durationInDays = this.convertToDays(parseInt(duration), durationUnit);
 
     return {
       exercise: `${exerciseCount} ${cleanExerciseType}`,
@@ -264,7 +260,7 @@ class SmartParser {
   /**
    * Convert weeks/months to days
    */
-  convertTodays(duration, unit) {
+  convertToDays(duration, unit) {
     const unitLower = unit.toLowerCase();
     
     if (['week', 'weeks', 'wk', 'wks', 'w'].includes(unitLower)) {

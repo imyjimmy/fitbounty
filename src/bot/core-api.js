@@ -91,7 +91,7 @@ class CoreAPI {
     const penaltyBet = await this.penaltyBetModel.create(challengeData);
 
     // Generate Lightning invoice for escrow
-    const invoice = await this.paymentHandler.generateEscrowInvoice(
+    const invoice = await this.paymentHandler.createEscrowInvoice(
       penaltyBet.penalty.amount,
       `Penalty bet escrow: ${penaltyBet.exercise.fullDescription}`,
       3600 // 1 hour expiry

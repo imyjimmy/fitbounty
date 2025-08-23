@@ -42,7 +42,10 @@ export const ADVANCED_PATTERNS = {
     /(\d+)\s+([a-z\s-]+?)\s+for\s+(\d+)\s+(day|days|week|weeks|wk|wks)\s*,?\s*(?:penalty|fine|cost)\s+(\d+)\s+(sats?|satoshis?)\s+(?:to|for)\s+(@\w+|@npub[\w\d]+)/i,
     
     // Flexible catch-all pattern
-    /(\d+)\s+(\w+(?:\s+\w+)?)\s+.*?(\d+)\s+(day|days|week|weeks)\s+.*?(@\w+|@npub[\w\d]+)\s+.*?(\d+)\s+(sats?|satoshis?)/i
+    /(\d+)\s+(\w+(?:\s+\w+)?)\s+.*?(\d+)\s+(day|days|week|weeks)\s+.*?(@\w+|@npub[\w\d]+)\s+.*?(\d+)\s+(sats?|satoshis?)/i,
+
+    /(\d+)\s+([a-z\s-]+?)\s+daily\s+for\s+(\d+)\s+(month|months|mo|mos)\s+or\s+(@\w+|@npub[\w\d]+)\s+(?:gets|receives)\s+(\d+)\s+(sats?|satoshis?)/i
+
   ],
 
   // Bounty challenge patterns
