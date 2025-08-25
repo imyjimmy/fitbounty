@@ -17,10 +17,6 @@ class SmartParser {
    * @returns {Object|null} - Parsed command or null
    */
   parseMessage(content, tags = []) {
-    if (!this.mentionsFitBounty(content)) {
-      return null;
-    }
-
     const normalizedContent = this.normalizeContent(content);
     
     console.log('🔍 DEBUGGING TEST CASE:');
@@ -72,6 +68,7 @@ class SmartParser {
       // console.log('Match result:', match);
       if (match) {
         const parsed = this.extractPenaltyBetData(match, pattern, tags);
+        console.log('PARSED FITNESS CHALLENGE: ', parsed);
         if (parsed && this.validatePenaltyBet(parsed)) {
           return {
             command: 'create_penalty_challenge',
@@ -93,27 +90,39 @@ class SmartParser {
     console.log('Match array:', match);
     console.log('Pattern source snippet:', pattern.source.substring(0, 50));
 
-    let exerciseCount, exerciseType, duration, durationUnit, penaltyRecipient, penaltyAmount, penaltyCurrency;
+    let exerciseCount, exerciseType, frequency, frequencyDesc, duration, durationUnit, penaltyRecipient, penaltyAmount, penaltyCurrency;
 
     // Handle different pattern structures based on the match groups
-    if (match.length === 7 && pattern.source.includes('daily\\s+for\\s+(?:a\\s+)?')) {
+    // For the "per day" pattern specifically
+    if (pattern.source.includes('per\\s+.*\\s+for')) {
+      // Pattern: (exerciseCount, exerciseType, frequency, duration, durationUnit, penaltyAmount, penaltyCurrency, nprofile)
+      [, exerciseCount, exerciseType, frequency, duration, durationUnit, penaltyAmount, penaltyCurrency, penaltyRecipient] = match;
+      frequencyDesc = frequency === 'day' ? 'daily' : 
+                    frequency === 'week' ? 'weekly' : 
+                    frequency === 'month' ? 'monthly' : frequency;
+      console.log('hey:', duration, durationUnit);
+    } else if (match.length === 7 && pattern.source.includes('daily\\s+for\\s+(?:a\\s+)?')) {
       // "X exercise daily for a week/month or @friend receives N sats"
       // console.log('Using "daily for a week/month" extraction logic');
       [, exerciseCount, exerciseType, durationUnit, penaltyRecipient, penaltyAmount, penaltyCurrency] = match;
       duration = 1; // Will be converted by convertToDays()
-      // console.log('Extracted:', { exerciseCount, exerciseType, durationUnit, penaltyRecipient, penaltyAmount });
+      console.log('Extracted:', { exerciseCount, exerciseType, durationUnit, penaltyRecipient, penaltyAmount });
     } else if (match.length === 8 && pattern.source.includes('daily\\s+for\\s+')) {
       // "X exercise daily for N days/weeks or @friend receives N sats"  
       [, exerciseCount, exerciseType, duration, durationUnit, penaltyRecipient, penaltyAmount, penaltyCurrency] = match;
+      console.log('Extracted:', { exerciseCount, exerciseType, durationUnit, penaltyRecipient, penaltyAmount });
     } else if (pattern.source.includes('have\\s+to')) {
       // "I have to do X Y for Z days OR I owe @friend N sats"
-      [, exerciseCount, exerciseType, duration, durationUnit, penaltyRecipient, penaltyAmount, penaltyCurrency] = match;
+      [, exerciseCount, exerciseType, frequency, duration, durationUnit, penaltyAmount, penaltyCurrency, penaltyRecipient ] = match;
+      console.log('Extracted!!:', { exerciseCount, exerciseType, durationUnit, penaltyAmount, penaltyCurrency, penaltyRecipient });
     } else if (pattern.source.includes('don')) {
       // "If I don't do X Y for Z days, @friend gets N sats"
       [, exerciseCount, exerciseType, duration, durationUnit, penaltyRecipient, penaltyAmount, penaltyCurrency] = match;
+      console.log('Extracted:', { exerciseCount, exerciseType, durationUnit, penaltyRecipient, penaltyAmount });
     } else if (pattern.source.includes('penalty')) {
       // "X Y for Z days, penalty N sats to @friend"
       [, exerciseCount, exerciseType, duration, durationUnit, penaltyAmount, penaltyCurrency, penaltyRecipient] = match;
+      console.log('Extracted:', { exerciseCount, exerciseType, durationUnit, penaltyRecipient, penaltyAmount });
     } else {
       // Flexible pattern - try to extract in order
       const groups = match.slice(1).filter(Boolean); // Remove full match and filter out undefined
@@ -124,18 +133,22 @@ class SmartParser {
       penaltyRecipient = groups[4];
       penaltyAmount = groups[5];
       penaltyCurrency = groups[6];
+      console.log('Extracted:', { exerciseCount, exerciseType, durationUnit, penaltyRecipient, penaltyAmount });
     }
+    
 
     // Clean and validate extracted data
     const cleanExerciseType = this.normalizeExercise(exerciseType);
     const cleanRecipient = penaltyRecipient?.replace('@', '');
     const recipientPubkey = this.findRecipientPubkey(cleanRecipient, tags);
+    console.log('duration was: ', duration, durationUnit );
     const durationInDays = this.convertToDays(parseInt(duration || 1), durationUnit); // Fixed: was convertTodays
 
     return {
       exercise: `${exerciseCount} ${cleanExerciseType}`,
       exerciseType: cleanExerciseType,
       exerciseCount: parseInt(exerciseCount),
+      frequency: frequencyDesc || 'daily',
       duration: durationInDays,
       penaltyAmount: parseInt(penaltyAmount),
       penaltyRecipient: cleanRecipient,
@@ -344,22 +357,10 @@ class SmartParser {
   }
 
   /**
-   * Check if message mentions @fitbounty
-   */
-  mentionsFitBounty(content) {
-    return /(@fitbounty|@fit.?bounty)/i.test(content);
-  }
-
-  /**
    * Get detailed parsing errors for user feedback
    */
   getParsingErrors(content) {
     const errors = [];
-    
-    if (!this.mentionsFitBounty(content)) {
-      errors.push('Message must mention @fitbounty');
-      return errors;
-    }
 
     // Check for common missing elements
     if (!/\d+/.test(content)) {

@@ -118,8 +118,10 @@ class NostrClient {
     const historicalFilter = {
       kinds: [1],
       '#p': [this.publicKey],
-      since: Math.floor(Date.now() / 1000) - 3600, // Last hour
-      limit: 50
+      // since: Math.floor(Date.now() / 1000) - 86400, // Last hour
+      // limit: 50
+      ids: ["be9d514db815524eef5a6f54d91c46c3f16f1d26e58c63415353218360cf16a0"], // Target specific post
+      limit: 1
     };
 
     console.log(`🔍 Querying historical mentions on ${relay.url}`);
@@ -139,7 +141,6 @@ class NostrClient {
     const liveFilter = {
       kinds: [1],
       '#p': [this.publicKey],
-      since: Math.floor(Date.now() / 1000) // From now forward
     };
 
     console.log(`👂 Subscribing to live mentions on ${relay.url}`);
@@ -170,18 +171,6 @@ class NostrClient {
       }
 
       this.seenEvents.add(event.id);
-      
-      // Check if this is a mention of our bot
-      const isMentioned = event.tags.some(tag => 
-        tag[0] === 'p' && tag[1] === this.publicKey
-      );
-
-      if (!isMentioned) return;
-
-      // Check if content mentions @fitbounty (case insensitive)
-      const contentMentionsBots = /(@fitbounty|@fit.?bounty)/i.test(event.content);
-      
-      if (!contentMentionsBots) return;
 
       console.log(`🎯 Mention detected from ${nip19.npubEncode(event.pubkey)}`);
       console.log(`📝 Content: ${event.content}`);
@@ -225,7 +214,7 @@ class NostrClient {
       kind: 1,
       created_at: Math.floor(Date.now() / 1000),
       tags: [
-        ['e', originalEvent.id], // Reply to original event
+        ['e', originalEvent.id, '', 'reply'], // Reply to original event
         ['p', originalEvent.pubkey], // Mention original author
         ...extraTags
       ],
@@ -236,26 +225,27 @@ class NostrClient {
     // Add event hash and signature
     replyEvent.id = getEventHash(replyEvent);
     replyEvent.sig = signEvent(replyEvent, this.privateKey);
+    console.log('about to publish: ', replyEvent);
 
     // Publish to all connected relays
-    const publishPromises = this.relays
-      .filter(r => r.connected && r.relay)
-      .map(async (relayInfo) => {
-        try {
-          await relayInfo.relay.publish(replyEvent);
-          console.log(`📤 Reply published to ${relayInfo.url}`);
-          return { url: relayInfo.url, success: true };
-        } catch (error) {
-          console.error(`💥 Failed to publish to ${relayInfo.url}:`, error.message);
-          return { url: relayInfo.url, success: false, error: error.message };
-        }
-      });
+    // const publishPromises = this.relays
+    //   .filter(r => r.connected && r.relay)
+    //   .map(async (relayInfo) => {
+    //     try {
+    //       await relayInfo.relay.publish(replyEvent);
+    //       console.log(`📤 Reply published to ${relayInfo.url}`);
+    //       return { url: relayInfo.url, success: true };
+    //     } catch (error) {
+    //       console.error(`💥 Failed to publish to ${relayInfo.url}:`, error.message);
+    //       return { url: relayInfo.url, success: false, error: error.message };
+    //     }
+    //   });
 
-    const results = await Promise.allSettled(publishPromises);
-    const successful = results.filter(r => r.value?.success).length;
+    // const results = await Promise.allSettled(publishPromises);
+    // const successful = results.filter(r => r.value?.success).length;
     
-    console.log(`✅ Reply published to ${successful}/${this.relays.length} relays`);
-    return { successful, total: this.relays.length, results };
+    // console.log(`✅ Reply published to ${successful}/${this.relays.length} relays`);
+    // return { successful, total: this.relays.length, results };
   }
 
   // Event emitter functionality

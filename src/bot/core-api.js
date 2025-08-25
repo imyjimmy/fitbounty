@@ -62,6 +62,7 @@ class CoreAPI {
     
     console.log(`💸 Creating penalty bet challenge for ${user.npub}`);
     console.log(`📋 Exercise: ${params.exercise}`);
+    console.log(`⏰ Frequency: ${params.frequency}`);
     console.log(`⏰ Duration: ${params.duration} days`);
     console.log(`💰 Penalty: ${params.penaltyAmount} sats to @${params.penaltyRecipient}`);
 

@@ -95,7 +95,7 @@ class FitBountyBot {
     try {
       // Parse the message using advanced pattern matching
       const parsedCommand = this.smartParser.parseMessage(content, event.tags);
-      
+      console.log('Parsed Command: ', parsedCommand);
       if (parsedCommand) {
         console.log(`🧠 Parsed command: ${parsedCommand.command}`);
         console.log(`🎯 Confidence: ${Math.round(parsedCommand.confidence * 100)}%`);

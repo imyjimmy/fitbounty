@@ -24,40 +24,36 @@ export const PENALTY_SYNONYMS = {
 };
 
 export const ADVANCED_PATTERNS = {
-  // Core penalty bet patterns - multiple variations
+  // Core penalty bet patterns - updated for nostr:nprofile mentions
   penaltyBets: [
-    // "I have to do X Y for Z days OR I owe @friend N sats"
-    /(?:i\s+(?:have\s+to|need\s+to|must|will|gonna)\s+do\s+)(\d+)\s+([a-z\s-]+?)\s+(?:for\s+|daily\s+for\s+|every\s+day\s+for\s+)(\d+)\s+(day|days|week|weeks|wk|wks)\s+(?:or|otherwise)\s+i\s+(?:owe|pay|send|give)\s+(@\w+|@npub[\w\d]+)\s+(\d+)\s+(sats?|satoshis?)/i,
+    // "I have to do X Y per day for Z days or else i give N sats to nostr:nprofile..."
+    /(?:i\s+(?:have\s+to|need\s+to|must|will|gonna)\s+do\s+)(\d+)\s+([a-z\s-]+?)\s+per\s+(day|week|month)\s+for\s+(\d+)\s+(day|days|week|weeks|month|months|wk|wks|mo|mos)\s+or\s+(?:else\s+)?i\s+(?:owe|pay|send|give)\s+(\d+)\s+(sats?|satoshis?)\s+to\s+(nostr:nprofile1[a-z0-9]+)/i,    
+    // "I have to do X Y for Z days OR I owe nostr:nprofile N sats"
+    /(?:i\s+(?:have\s+to|need\s+to|must|will|gonna)\s+do\s+)(\d+)\s+([a-z\s-]+?)\s+(?:for\s+|daily\s+for\s+|every\s+day\s+for\s+)(\d+)\s+(day|days|week|weeks|wk|wks)\s+(?:or|otherwise)\s+i\s+(?:owe|pay|send|give)\s+(nostr:nprofile1[a-z0-9]+)\s+(\d+)\s+(sats?|satoshis?)/i,
     
-    // "If I don't do X Y for Z days, @friend gets N sats"
-    /(?:if\s+i\s+(?:don'?t|do\s+not|fail\s+to)\s+do\s+)(\d+)\s+([a-z\s-]+?)\s+(?:for\s+|daily\s+for\s+)(\d+)\s+(day|days|week|weeks|wk|wks)\s*,?\s*(@\w+|@npub[\w\d]+)\s+(?:gets|receives)\s+(\d+)\s+(sats?|satoshis?)/i,
+    // "If I don't do X Y for Z days, nostr:nprofile gets N sats"
+    /(?:if\s+i\s+(?:don'?t|do\s+not|fail\s+to)\s+do\s+)(\d+)\s+([a-z\s-]+?)\s+(?:for\s+|daily\s+for\s+)(\d+)\s+(day|days|week|weeks|wk|wks)\s*,?\s*(nostr:nprofile1[a-z0-9]+)\s+(?:gets|receives)\s+(\d+)\s+(sats?|satoshis?)/i,
     
-    // "X Y daily for Z days or @friend gets N sats"
-    /(\d+)\s+([a-z\s-]+?)\s+(?:daily|every\s+day)\s+for\s+(\d+)\s+(day|days|week|weeks|wk|wks)\s+(?:or|otherwise)\s+(@\w+|@npub[\w\d]+)\s+(?:gets|receives)\s+(\d+)\s+(sats?|satoshis?)/i,
+    // "X Y daily for Z days or nostr:nprofile gets N sats"
+    /(\d+)\s+([a-z\s-]+?)\s+(?:daily|every\s+day)\s+for\s+(\d+)\s+(day|days|week|weeks|wk|wks)\s+(?:or|otherwise)\s+(nostr:nprofile1[a-z0-9]+)\s+(?:gets|receives)\s+(\d+)\s+(sats?|satoshis?)/i,
     
-    // "X Y daily for a week/month or @friend gets N sats" - NEW PATTERN
-    /(\d+)\s+([a-z\s-]+?)\s+daily\s+for\s+(?:a\s+)?(week|month)\s+or\s+(@\w+|@npub[\w\d]+)\s+(?:gets|receives)\s+(\d+)\s+(sats?|satoshis?)/i,
+    // "X Y daily for a week/month or nostr:nprofile gets N sats"
+    /(\d+)\s+([a-z\s-]+?)\s+daily\s+for\s+(?:a\s+)?(week|month)\s+or\s+(nostr:nprofile1[a-z0-9]+)\s+(?:gets|receives)\s+(\d+)\s+(sats?|satoshis?)/i,
     
-    // "X Y for Z days, penalty N sats to @friend"
-    /(\d+)\s+([a-z\s-]+?)\s+for\s+(\d+)\s+(day|days|week|weeks|wk|wks)\s*,?\s*(?:penalty|fine|cost)\s+(\d+)\s+(sats?|satoshis?)\s+(?:to|for)\s+(@\w+|@npub[\w\d]+)/i,
+    // "X Y for Z days, penalty N sats to nostr:nprofile"
+    /(\d+)\s+([a-z\s-]+?)\s+for\s+(\d+)\s+(day|days|week|weeks|wk|wks)\s*,?\s*(?:penalty|fine|cost)\s+(\d+)\s+(sats?|satoshis?)\s+(?:to|for)\s+(nostr:nprofile1[a-z0-9]+)/i,
     
-    // Flexible catch-all pattern
-    /(\d+)\s+(\w+(?:\s+\w+)?)\s+.*?(\d+)\s+(day|days|week|weeks)\s+.*?(@\w+|@npub[\w\d]+)\s+.*?(\d+)\s+(sats?|satoshis?)/i,
-
-    /(\d+)\s+([a-z\s-]+?)\s+daily\s+for\s+(\d+)\s+(month|months|mo|mos)\s+or\s+(@\w+|@npub[\w\d]+)\s+(?:gets|receives)\s+(\d+)\s+(sats?|satoshis?)/i
-
+    // Flexible catch-all pattern with nostr:nprofile
+    /(\d+)\s+(\w+(?:\s+\w+)?)\s+.*?(\d+)\s+(day|days|week|weeks)\s+.*?(nostr:nprofile1[a-z0-9]+)\s+.*?(\d+)\s+(sats?|satoshis?)/i
   ],
 
-  // Bounty challenge patterns
+  // Bounty challenge patterns - these don't need profile mentions
   bountyChallenges: [
-    // "@fitbounty challenge: X Y for Z days"
-    /@fitbounty\s+challenge:?\s*(\d+)\s+([a-z\s-]+?)\s+(?:for\s+|daily\s+for\s+)(\d+)\s+(day|days|week|weeks)/i,
+    // "challenge: X Y for Z days"
+    /challenge:?\s*(\d+)\s+([a-z\s-]+?)\s+(?:for\s+|daily\s+for\s+)(\d+)\s+(day|days|week|weeks)/i,
     
-    // "I want to do X Y for Z days @fitbounty"
-    /(?:i\s+(?:want\s+to|will|gonna)\s+do\s+)(\d+)\s+([a-z\s-]+?)\s+(?:for\s+|daily\s+for\s+)(\d+)\s+(day|days|week|weeks)\s+.*?@fitbounty/i,
-    
-    // "Challenge: X Y daily for Z days"
-    /challenge:?\s*(\d+)\s+([a-z\s-]+?)\s+(?:daily|every\s+day)\s+for\s+(\d+)\s+(day|days|week|weeks)/i,
+    // "I want to do X Y for Z days"
+    /(?:i\s+(?:want\s+to|will|gonna)\s+do\s+)(\d+)\s+([a-z\s-]+?)\s+(?:for\s+|daily\s+for\s+)(\d+)\s+(day|days|week|weeks)/i,
     
     // "X Y daily for Z days, who wants to bet?"
     /(\d+)\s+([a-z\s-]+?)\s+(?:daily|every\s+day)\s+for\s+(\d+)\s+(day|days|week|weeks).*?(?:bet|bounty|pledge)/i
@@ -65,28 +61,27 @@ export const ADVANCED_PATTERNS = {
 
   // Bounty setting patterns  
   setBounty: [
-    /@fitbounty\s+bounty\s+(\d+)\s+(sats?|satoshis?)/i,
-    /(?:i'll\s+(?:put|bet|pledge)|bounty)\s+(\d+)\s+(sats?|satoshis?)/i,
-    /(?:i\s+bet|betting)\s+(\d+)\s+(sats?|satoshis?)/i
+    /bounty\s+(\d+)\s+(sats?|satoshis?)/i,
+    /(?:i'll\s+(?:put|bet|pledge)|betting)\s+(\d+)\s+(sats?|satoshis?)/i,
+    /(?:i\s+bet)\s+(\d+)\s+(sats?|satoshis?)/i
   ],
 
   // Status and utility patterns
   status: [
-    /@fitbounty\s+status/i,
+    /status/i,
     /(?:how'?s?\s+my\s+challenge|show\s+(?:my\s+)?(?:challenge\s+)?(?:status|progress))/i,
     /(?:what'?s\s+my\s+progress|check\s+my\s+challenge)/i
   ],
 
   leaderboard: [
-    /@fitbounty\s+leaderboard/i,
-    /(?:show\s+)?(?:the\s+)?leaderboard/i,
+    /leaderboard/i,
     /top\s+performers/i
   ],
 
   help: [
-    /@fitbounty\s+help/i,
+    /help/i,
     /(?:how\s+do\s+i\s+use|what\s+(?:can\s+you\s+do|commands))/i,
-    /(?:help|instructions)/i
+    /instructions/i
   ]
 };
 
